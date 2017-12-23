@@ -30,8 +30,6 @@ mur2OAuth mur = twitterOAuth
   , oauthConsumerSecret = B8.pack $ murConsumerSecret mur
   }
 
-----
-
 getTWInfo :: MurmurAuth -> IO TWInfo
 getTWInfo mur = do
   mgr <- newManager tlsManagerSettings
@@ -63,7 +61,7 @@ post twInfo req = do
   runResourceT $ call twInfo mgr req
   return ()
 
--- GetTimeline
+-- ShowTimeline
 showMentionsTimeline :: TWInfo -> Int -> IO ()
 showMentionsTimeline twInfo = showTimeline mentionsTimeline twInfo
 
@@ -87,4 +85,35 @@ putTweetLn st = liftIO . T.putStrLn . T.concat $
   , ")】"
   , st^.statusText
   ]
+
+-- GetTimeLine
+
+data TweetInfo = TweetInfo 
+  { twStatusId :: Integer
+  , twUserName :: T.Text
+  , twUserScreenName :: T.Text
+  , twText :: T.Text
+  } deriving (Show, Read)
+
+getTweets :: Status -> TweetInfo
+getTweets st = TweetInfo
+  { twStatusId = st^.statusId
+  , twUserName = st^.statusUser.userName
+  , twUserScreenName = st^.statusUser.userScreenName
+  , twText = st^.statusText
+  } 
+
+getMentionsTimeline :: TWInfo -> Int -> IO [TweetInfo]
+getMentionsTimeline twInfo = getTimeline mentionsTimeline twInfo
+
+getHomeTimeline :: TWInfo -> Int -> IO [TweetInfo]
+getHomeTimeline twInfo = getTimeline homeTimeline twInfo
+
+getTimeline :: HasMaxIdParam (APIRequest a [Status]) => APIRequest a [Status] -> TWInfo -> Int -> IO [TweetInfo]
+getTimeline status twInfo ln = do
+  mgr <- newManager tlsManagerSettings
+  runResourceT $ do
+    let src = sourceWithMaxId twInfo mgr status
+    src $= CL.isolate ln $= CL.map getTweets $$ CL.consume
+
 

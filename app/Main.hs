@@ -7,54 +7,29 @@ import Options.Declarative
 import System.Directory
 
 main :: IO ()
-main = run_ $ Group "Simple twitter CLI client"
-  [ subCmd "home" cmdHome
-  , subCmd "post" cmdPost
-  , subCmd "mentions" cmdMention
-  , subCmd "reply" cmdReply
-  , subCmd "auth" cmdAuth
-  ]
-  
-cmdHome :: Flag "l" '["Length"] "LEN" "length for Tweets list" (Def "20" Int)
-  -> Cmd "Show user home timeline" ()
-cmdHome ln = liftIO $ do
-  twInfo <- readTWInfo
-  showHomeTimeline twInfo $ get ln
+main = do
+  putStrLn "Hello"
+  -- auth
+  -- twInfo <- readTWInfo
+  -- print twInfo
+  -- getMentionsTimeline twInfo 10 >>= print
 
-cmdPost :: Arg "MESSAGE" String -> Cmd "Post new tweet" ()
-cmdPost msg = liftIO $ do
-  twInfo <- readTWInfo
-  postTweet twInfo $ get msg
+readTWInfo :: IO TWInfo
+readTWInfo = twInfoFileName >>= readFile >>= return . read
 
-cmdMention :: Flag "l" '["Length"] "LEN" "length for mentions list" (Def "20" Int)
-  -> Cmd "Show mentions for you" ()
-cmdMention ln = liftIO $ do
-  twInfo <- readTWInfo
-  showMentionsTimeline twInfo $ get ln
-
-cmdReply :: Flag "i" '["Id"] "StatusID" "Target tweet id" Integer 
-  -> Arg "MESSAGE" String -> Cmd "Post new tweet" ()
-cmdReply id msg = liftIO $ do
-  twInfo <- readTWInfo
-  postWithReplyId twInfo (get msg) $ get id
-
-cmdAuth :: Cmd "Authentication twitter account" ()
-cmdAuth = liftIO $ do
+auth :: IO ()
+auth = do
   twInfo <- getTWInfo murAuth
   twInfoFileName >>= flip writeFile (show twInfo)
 
 ----
 
-readTWInfo :: IO TWInfo
-readTWInfo = twInfoFileName >>= readFile >>= return . read
 
 twInfoFileName :: IO String
 twInfoFileName = do
   homeDir <- getHomeDirectory
-  createDirectoryIfMissing False $ homeDir ++ "/.murmur"
-  return $ homeDir ++ "/.murmur/twInfo"
-
-----
+  createDirectoryIfMissing False $ homeDir ++ "/.secretary-bot"
+  return $ homeDir ++ "/.secretary-bot/twInfo"
 
 murAuth :: MurmurAuth 
 murAuth = MurmurAuth
@@ -65,10 +40,9 @@ murAuth = MurmurAuth
       getLine
   }
 
--- 俺はおまいらがコレを悪用したりしないって信じてる
 consumerKey :: String
-consumerKey = "KfczaBGJTRNFT7NdhT4DJg"
+consumerKey = ""
 
 consumerSecret :: String
-consumerSecret = "HpExCp1ndUyHC3TzEyTtGZHSfYlo3BgP0kr2t3VtI8"
+consumerSecret = ""
 
