@@ -27,9 +27,8 @@ secretary = do
     [] -> return []
     xs -> do
       v <- loadTlInfo
-      putStrLn " --- got tweets"
       saveTlInfo . twStatusId . head $ reverse xs
-      return . filter ((v <) . twStatusId) $ xs
+      return . filter ((/="its_out_of_tune") . twUserName) . filter ((v <) . twStatusId) $ xs
   putStrLn " --- target tweets"
   sequenceMap_ printTweet $ targets
   putStrLn " --- run schedule"
