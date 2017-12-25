@@ -19,6 +19,7 @@ data CommandToken
   | TokenHour Int
   | TokenMinites Int
   | TokenHourMinites Int Int
+  deriving (Show, Read)
 
 yearParser :: Parser CommandToken
 yearParser = TokenYear <$> decimal <* "年"
@@ -33,7 +34,15 @@ hourParser :: Parser CommandToken
 hourParser = TokenHour <$> decimal <* "時"
 
 minitesParser :: Parser CommandToken
-minitesParser = TokenHour <$> decimal <* "分"
+minitesParser = TokenMinites <$> decimal <* "分"
+
+dateTimeParser :: Parser CommandToken
+dateTimeParser 
+  =   yearParser 
+  <|> monthParser
+  <|> dayParser
+  <|> hourParser
+  <|> minitesParser
 
 sayParser :: Parser CommandToken
 sayParser = string "って言って" *> pure TokenSay
@@ -48,6 +57,7 @@ accountParser = TokenAccount <$> (char '@' *> many1 (chars "abcdefghijklmnopqrst
 tokenParser :: Parser CommandToken
 tokenParser 
   =   accountParser
+  <|> dateTimeParser
   <|> sayParser 
   <|> TokenAnyChar <$> anyChar
 

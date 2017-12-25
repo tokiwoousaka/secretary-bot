@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
-module Web.Twitter.Murmur where
+module Web.Secretary.Twitter where
 import Control.Lens
 import System.IO
 import Data.Conduit

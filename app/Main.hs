@@ -2,13 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 import Web.Twitter.Conduit (TWInfo)
-import Web.Twitter.Murmur 
+import Web.Secretary.Twitter
 import Web.Secretary.Parser
 
 import Data.Time
 import Data.List
 import Control.Monad.IO.Class
-import Options.Declarative
 import System.Directory
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -16,22 +15,25 @@ import Data.Maybe
 import Text.Read
 
 main :: IO ()
-main = do
+main = secretary
+
+secretary :: IO ()
+secretary = do
   twInfo <- readTWInfo
   tl <- do
     t <- getMentionsTimeline twInfo 10 
     return $ sortBy (\l r -> twStatusId l `compare` twStatusId r) t
-  case tl of
-    [] -> return ()
+  targets <- case tl of
+    [] -> return []
     xs -> do
       v <- loadTlInfo
       putStrLn " --- got tweets"
-      sequenceMap_ printTweet $ xs
-      let targes = filter ((v <) . twStatusId) $ xs
-      putStrLn " --- target tweets"
-      sequenceMap_ (runSchedules . twText) $ targes
-      sequenceMap_ printTweet $ targes
       saveTlInfo . twStatusId . head $ reverse xs
+      return . filter ((v <) . twStatusId) $ xs
+  putStrLn " --- target tweets"
+  sequenceMap_ printTweet $ targets
+  putStrLn " --- run schedule"
+  runSecretary $ map twText targets
 
 readTWInfo :: IO TWInfo
 readTWInfo = twInfoFileName >>= readFile >>= return . read
@@ -53,7 +55,7 @@ printTweet tw = T.putStrLn . T.concat $
   ]
 
 ----
--- スケジュール判定
+-- スケジュール管理
 
 maybeTargetSchedule :: (Schedule, Maybe LocalTime) -> LocalTime -> Maybe Schedule
 maybeTargetSchedule (_, Just _) _ = Nothing --TODO: 繰り返しスケジュール
@@ -61,29 +63,41 @@ maybeTargetSchedule (sc@(ScheduleNow s), Nothing) _ = Just sc
 maybeTargetSchedule (sc@(ScheduleLocalTime lt _), Nothing) now 
   = if lt < now then Just sc else Nothing
 
+isOldSchedule :: (Schedule, Maybe LocalTime) -> Bool
+isOldSchedule (_, Just _) = False
+isOldSchedule (sc@(ScheduleNow _), Nothing) = True
+isOldSchedule (sc@(ScheduleLocalTime _ _), Nothing) = True
+
+printSchedule :: (Schedule, Maybe LocalTime) -> IO ()
+printSchedule ((ScheduleNow s), la) = putStrLn $ "ただちに発言 : '" ++ s ++ "' 最終発言日時 : " ++ show la
+printSchedule ((ScheduleLocalTime lt s), la) = putStrLn $ show lt ++ "に発言 : '" ++ s ++ "' 最終発言日時 : " ++ show la
+printSchedule s = putStrLn $ "出力未対応 : " ++ show s
+
 ----
 -- 実行
 
-runSchedules :: T.Text -> IO ()
-runSchedules text = do
-    twInfo <- readTWInfo --TODO : 読むとこ変える
-    fs <- loadScheduleInfo --TODO : 読むとこ変える
-    let sc = maybeListToList $ parseCommand text 
+runSecretary :: [T.Text] -> IO ()
+runSecretary texts = do
+    twInfo <- readTWInfo
+    fs <- loadScheduleInfo
+    let sc = concatMap (maybeListToList . parseCommand) $ texts
     let schedule = initSchedule sc ++ fs
-    sequenceMap_ (runCommand twInfo) schedule 
+    res <- sequenceMap (runCommand twInfo) schedule 
+    saveScheduleInfo $ filter isOldSchedule res
   where 
     initSchedule :: [Schedule] -> [(Schedule, Maybe LocalTime)]
     initSchedule = map (flip (,) Nothing)
 
 runCommand :: TWInfo -> (Schedule, Maybe LocalTime) -> IO (Schedule, Maybe LocalTime)
 runCommand tw st = do 
-    now <- do
-      utc <- getZonedTime >>= return . zonedTimeToUTC
-      timeZone <- getCurrentTimeZone
-      return $ utcToLocalTime timeZone utc
+    now <- getNow
+    printSchedule st
     case maybeTargetSchedule st now of
-      Just sc -> run sc >> return (sc, Just now)
-      Nothing -> return st
+      Just sc -> do
+        putStrLn "   -> Run"
+        run sc >> return (sc, Just now)
+      Nothing -> do
+        return st
   where
     run :: Schedule -> IO ()
     run (ScheduleNow str) = postTweet tw $ "@its_out_of_tune " ++ str
@@ -155,9 +169,21 @@ consumerKey = ""
 consumerSecret :: String
 consumerSecret = ""
 
+----
+-- Util
+
 sequenceMap_ :: (Foldable f, Functor f, Monad m) => (a -> m b) -> f a -> m ()
 sequenceMap_ f = sequence_  . fmap f
+
+sequenceMap :: (Traversable f, Functor f, Monad m) => (a -> m b) -> f a -> m (f b)
+sequenceMap f = sequence  . fmap f
 
 maybeListToList :: Maybe [a] -> [a]
 maybeListToList (Just xs) = xs
 maybeListToList Nothing = []
+
+getNow :: IO LocalTime
+getNow = do
+  utc <- getZonedTime >>= return . zonedTimeToUTC
+  timeZone <- getCurrentTimeZone
+  return $ utcToLocalTime timeZone utc
