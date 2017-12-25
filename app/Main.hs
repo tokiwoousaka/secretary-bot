@@ -78,6 +78,7 @@ printSchedule s = putStrLn $ "出力未対応 : " ++ show s
 runSecretary :: [T.Text] -> IO ()
 runSecretary texts = do
     now <- getNow
+    putStrLn $ " --- start run secretary : " ++ show now
     twInfo <- readTWInfo
     fs <- loadScheduleInfo
     let sc = concatMap (maybeListToList . parseCommand now) $ texts
