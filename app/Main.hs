@@ -78,19 +78,19 @@ printSchedule s = putStrLn $ "出力未対応 : " ++ show s
 
 runSecretary :: [T.Text] -> IO ()
 runSecretary texts = do
+    now <- getNow
     twInfo <- readTWInfo
     fs <- loadScheduleInfo
-    let sc = concatMap (maybeListToList . parseCommand) $ texts
+    let sc = concatMap (maybeListToList . parseCommand now) $ texts
     let schedule = initSchedule sc ++ fs
-    res <- sequenceMap (runCommand twInfo) schedule 
+    res <- sequenceMap (runCommand now twInfo) schedule 
     saveScheduleInfo $ filter isOldSchedule res
   where 
     initSchedule :: [Schedule] -> [(Schedule, Maybe LocalTime)]
     initSchedule = map (flip (,) Nothing)
 
-runCommand :: TWInfo -> (Schedule, Maybe LocalTime) -> IO (Schedule, Maybe LocalTime)
-runCommand tw st = do 
-    now <- getNow
+runCommand :: LocalTime -> TWInfo -> (Schedule, Maybe LocalTime) -> IO (Schedule, Maybe LocalTime)
+runCommand now tw st = do 
     printSchedule st
     case maybeTargetSchedule st now of
       Just sc -> do

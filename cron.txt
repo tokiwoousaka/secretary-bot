@@ -1,0 +1,4 @@
+# m h  dom mon dow   command
+
+*/1 * * * * /home/tune/.local/bin/secretary-bot >> ~/.secretary-bot/bot.log 2>&1
+0   0 * * * cp ~/.secretary-bot/bot.log ~/.secretary-bot/old.log && rm ~/.secretary-bot/bot.log

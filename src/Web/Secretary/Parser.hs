@@ -16,6 +16,7 @@ data CommandToken
   | TokenMonth Int
   | TokenDay Int
   | TokenMonthDay Int Int
+  | TokenYearMonthDay Integer Int Int
   | TokenHour Int
   | TokenMinites Int
   | TokenHourMinites Int Int
@@ -27,6 +28,12 @@ yearParser = TokenYear <$> decimal <* "年"
 monthParser :: Parser CommandToken
 monthParser = TokenMonth <$> decimal <* "月"
 
+monthDayParser :: Parser CommandToken
+monthDayParser = TokenMonthDay <$> decimal <* "/" <*> decimal
+
+yearMonthDayParser :: Parser CommandToken
+yearMonthDayParser = TokenYearMonthDay <$> decimal <* "/" <*> decimal <* "/" <*> decimal
+
 dayParser :: Parser CommandToken
 dayParser = TokenDay <$> decimal <* "日"
 
@@ -36,9 +43,15 @@ hourParser = TokenHour <$> decimal <* "時"
 minitesParser :: Parser CommandToken
 minitesParser = TokenMinites <$> decimal <* "分"
 
+hourMinitesParser :: Parser CommandToken
+hourMinitesParser = TokenHourMinites <$> decimal <* ":" <*> decimal
+
 dateTimeParser :: Parser CommandToken
 dateTimeParser 
-  =   yearParser 
+  =   yearMonthDayParser
+  <|> monthDayParser
+  <|> hourMinitesParser
+  <|> yearParser 
   <|> monthParser
   <|> dayParser
   <|> hourParser
@@ -72,8 +85,8 @@ parseToken text =
     Done _ res -> Just res
     _ -> Nothing
     
-parseCommand :: T.Text -> Maybe [Schedule]
-parseCommand = fmap tokensToCommands . parseToken 
+parseCommand :: LocalTime -> T.Text -> Maybe [Schedule]
+parseCommand now = fmap (tokensToCommands now) . parseToken 
 
 -----
 
@@ -99,13 +112,13 @@ defaultDateTime = DateTime
   , dtMinutes = Nothing
   } 
 
-tokensToCommands :: [CommandToken] -> [Schedule]
-tokensToCommands [] = []
-tokensToCommands xs = do
+tokensToCommands :: LocalTime -> [CommandToken] -> [Schedule]
+tokensToCommands now [] = []
+tokensToCommands now xs = do
     let (ys, command) = evalState (token2Cmd xs) ("", defaultDateTime)
     case command of
-      Just cmd -> cmd : tokensToCommands ys
-      _ -> tokensToCommands ys
+      Just cmd -> cmd : tokensToCommands now ys
+      _ -> tokensToCommands now ys
   where 
     token2Cmd :: [CommandToken] -> State (String, DateTime) ([CommandToken], Maybe Schedule)
     token2Cmd [] = return ([], Nothing)
@@ -118,6 +131,14 @@ tokensToCommands xs = do
       buildChar c
       token2Cmd xs
     -- date tokens
+    token2Cmd (TokenYearMonthDay y m d:xs) = do
+      dt <- fmap snd $ get
+      putDt $ dt { dtYear = Just y, dtMonth = Just m, dtDay = Just d }
+      token2Cmd xs
+    token2Cmd (TokenMonthDay m d:xs) = do
+      dt <- fmap snd $ get
+      putDt $ dt { dtMonth = Just m, dtDay = Just d }
+      token2Cmd xs
     token2Cmd (TokenYear i:xs) = do
       dt <- fmap snd $ get
       putDt $ dt { dtYear = Just i }
@@ -129,6 +150,10 @@ tokensToCommands xs = do
     token2Cmd (TokenDay i:xs) = do
       dt <- fmap snd $ get
       putDt $ dt { dtDay = Just i }
+      token2Cmd xs
+    token2Cmd (TokenHourMinites h m:xs) = do
+      dt <- fmap snd $ get
+      putDt $ dt { dtHour = Just h, dtMinutes = Just m }
       token2Cmd xs
     token2Cmd (TokenHour i:xs) = do
       dt <- fmap snd $ get
@@ -148,9 +173,13 @@ tokensToCommands xs = do
     putDt dt = modify (\(s, _) -> (s, dt))
 
     constructSchedule :: DateTime -> String -> Schedule
-    constructSchedule dt = case constructLocalTime dt of
+    constructSchedule dt = case getScheduleTime now dt of
       Just lt -> ScheduleLocalTime lt
       Nothing -> ScheduleNow
+
+getScheduleTime :: LocalTime -> DateTime -> Maybe LocalTime
+getScheduleTime now dt = 
+  foldl mplus Nothing [constructLocalTime dt, correctYear now dt, correctDay now dt]
 
 constructLocalTime :: DateTime -> Maybe LocalTime
 constructLocalTime dt = do
@@ -166,3 +195,24 @@ constructLocalTime dt = do
       { localDay = lday
       , localTimeOfDay = ltime
       } 
+
+correctYear :: LocalTime -> DateTime -> Maybe LocalTime
+correctYear now dt = do
+  let (year, _, _) = toGregorian . localDay $ now
+  currentYear <- constructLocalTime $ dt { dtYear = Just year }
+  if now < currentYear 
+    then Just currentYear
+    else constructLocalTime $ dt { dtYear = Just $ year + 1 }
+
+correctDay :: LocalTime -> DateTime -> Maybe LocalTime
+correctDay now dt = do
+    let (year, month, day) = toGregorian . localDay $ now
+    currentDay <- constructLocalTime 
+      $ dt { dtYear = Just year, dtMonth = Just month, dtDay = Just day }
+    if now < currentDay
+      then Just currentDay
+      else Just $ addDaysForLocalTime 1 currentDay
+  where
+    addDaysForLocalTime :: Integer -> LocalTime -> LocalTime
+    addDaysForLocalTime i (LocalTime day timeOfDay) = LocalTime (addDays 1 day) timeOfDay
+
