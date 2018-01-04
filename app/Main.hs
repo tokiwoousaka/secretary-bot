@@ -4,6 +4,7 @@ module Main where
 import Web.Twitter.Conduit (TWInfo)
 import Web.Secretary.Twitter
 import Web.Secretary.Parser
+import System.Environment
 
 import Data.Time
 import Data.List
@@ -15,7 +16,12 @@ import Data.Maybe
 import Text.Read
 
 main :: IO ()
-main = secretary
+main = do
+  args <- getArgs 
+  case args of
+    [] -> secretary
+    "auth" : _ -> auth
+    "show" : _ -> printSchedules
 
 secretary :: IO ()
 secretary = do
@@ -66,6 +72,11 @@ isOldSchedule :: (Schedule, Maybe LocalTime) -> Bool
 isOldSchedule (_, Just _) = False
 isOldSchedule (sc@(ScheduleNow _), Nothing) = True
 isOldSchedule (sc@(ScheduleLocalTime _ _), Nothing) = True
+
+printSchedules :: IO ()
+printSchedules = do
+  schedules <- loadScheduleInfo
+  mapM_ printSchedule schedules
 
 printSchedule :: (Schedule, Maybe LocalTime) -> IO ()
 printSchedule ((ScheduleNow s), la) = putStrLn $ "ただちに発言 : '" ++ s ++ "' 最終発言日時 : " ++ show la
