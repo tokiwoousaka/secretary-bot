@@ -6,6 +6,7 @@ import Control.Monad.State
 import Data.Attoparsec.Text
 import Data.List.Extra (trim)
 import Data.Time
+import Data.Maybe
 import qualified Data.Text as T
 
 data CommandToken
@@ -92,6 +93,7 @@ parseCommand now = fmap (tokensToCommands now) . parseToken
 
 data Schedule 
   = ScheduleLocalTime LocalTime String
+  | SchedulePlans LocalTime String
   | ScheduleNow String
   deriving (Show, Read)
 
@@ -115,18 +117,16 @@ defaultDateTime = DateTime
 tokensToCommands :: LocalTime -> [CommandToken] -> [Schedule]
 tokensToCommands now [] = []
 tokensToCommands now xs = do
-    let (ys, command) = evalState (token2Cmd xs) ("", defaultDateTime)
-    case command of
-      Just cmd -> cmd : tokensToCommands now ys
-      _ -> tokensToCommands now ys
+    let (ys, commands) = evalState (token2Cmd xs) ("", defaultDateTime)
+    catMaybes commands ++ tokensToCommands now ys
   where 
-    token2Cmd :: [CommandToken] -> State (String, DateTime) ([CommandToken], Maybe Schedule)
-    token2Cmd [] = return ([], Nothing)
+    token2Cmd :: [CommandToken] -> State (String, DateTime) ([CommandToken], [Maybe Schedule])
+    token2Cmd [] = return ([], [])
     token2Cmd (TokenSay : xs) = do
       str <- fmap fst $ get
       dt <- fmap snd $ get
       put ("", defaultDateTime)
-      return (xs, Just . constructSchedule dt . reverse $ trim str)
+      return (xs, map Just . addNotify . constructSchedule dt . reverse $ trim str)
     token2Cmd (TokenAnyChar c: xs) = do
       buildChar c
       token2Cmd xs
@@ -176,6 +176,10 @@ tokensToCommands now xs = do
     constructSchedule dt = case getScheduleTime now dt of
       Just lt -> ScheduleLocalTime lt
       Nothing -> ScheduleNow
+
+    addNotify :: Schedule -> [Schedule]
+    addNotify s@(ScheduleLocalTime t m) = [s, SchedulePlans t m]
+    addNotify s = [s]
 
 getScheduleTime :: LocalTime -> DateTime -> Maybe LocalTime
 getScheduleTime now dt = 
