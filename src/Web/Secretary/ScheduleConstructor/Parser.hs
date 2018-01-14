@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Web.Secretary.Parser where
+module Web.Secretary.ScheduleConstructor.Parser where
 import Control.Applicative
 import Control.Monad.State
 import Data.Attoparsec.Text

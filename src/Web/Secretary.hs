@@ -2,8 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Web.Secretary where
 import Web.Twitter.Conduit (TWInfo)
-import Web.Secretary.Twitter
-import Web.Secretary.Parser
 import Web.Secretary.ScheduleConstructor
 
 import Data.Time
