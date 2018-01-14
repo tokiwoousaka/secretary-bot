@@ -4,15 +4,20 @@ module Web.Secretary where
 import Web.Twitter.Conduit (TWInfo)
 import Web.Secretary.ScheduleConstructor
 import Web.Secretary.Twitter
-
+import Web.Secretary.File 
+  ( loadScheduleInfo 
+  , loadTlInfo 
+  , saveScheduleInfo 
+  , saveTlInfo 
+  , readTWInfo
+  , writeTWInfo
+  )
 import Data.Time
 import Data.List
 import Control.Monad.IO.Class
-import System.Directory
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Maybe
-import Text.Read
 
 secretary :: IO ()
 secretary = do
@@ -31,13 +36,10 @@ secretary = do
   putStrLn " --- run schedule"
   runSecretary $ map twText targets
 
-readTWInfo :: IO TWInfo
-readTWInfo = twInfoFileName >>= readFile >>= return . read
-
 auth :: IO ()
 auth = do
   twInfo <- getTWInfo murAuth
-  twInfoFileName >>= flip writeFile (show twInfo)
+  writeTWInfo twInfo
 
 printTweet :: TweetInfo -> IO ()
 printTweet tw = T.putStrLn . T.concat $ 
@@ -113,59 +115,11 @@ runCommand now tw st = do
       postTweet tw $ "@its_out_of_tune " ++ show lt ++ "に、「" ++ str ++ "」って言うよ"
 
 ----
--- ファイル管理
-
-twInfoFileName :: IO String
-twInfoFileName = do
-  homeDir <- getHomeDirectory
-  createDirectoryIfMissing False $ homeDir ++ "/.secretary-bot"
-  return $ homeDir ++ "/.secretary-bot/twInfo"
-
-tlInfoFileName :: IO String
-tlInfoFileName = do
-  homeDir <- getHomeDirectory
-  createDirectoryIfMissing False $ homeDir ++ "/.secretary-bot"
-  return $ homeDir ++ "/.secretary-bot/tlInfo"
-
-scheduleInfoFileName :: IO String
-scheduleInfoFileName = do
-  homeDir <- getHomeDirectory
-  createDirectoryIfMissing False $ homeDir ++ "/.secretary-bot"
-  return $ homeDir ++ "/.secretary-bot/schedule"
-
-loadScheduleInfo :: IO [(Schedule, Maybe LocalTime)]
-loadScheduleInfo = scheduleInfoFileName >>= loadFileInfo []
-
-loadTlInfo :: IO Integer
-loadTlInfo = tlInfoFileName >>= loadFileInfo 0
-
-loadFileInfo :: Read a => a -> String -> IO a
-loadFileInfo def fn = do
-  exist <- doesFileExist fn
-  if exist 
-    then do
-      ti <- readFile fn
-      case readMaybe ti of
-        Just s -> return s
-        _ -> return def
-    else
-      return def
-
-saveScheduleInfo :: [(Schedule, Maybe LocalTime)] -> IO ()
-saveScheduleInfo v = scheduleInfoFileName >>= saveFileInfo v
-
-saveTlInfo :: Integer -> IO ()
-saveTlInfo v = tlInfoFileName >>= saveFileInfo v
-
-saveFileInfo :: Show a => a -> String -> IO ()
-saveFileInfo v fn = writeFile fn $ show v
-
-----
 -- 認証系
 
 murAuth :: MurmurAuth 
 murAuth = MurmurAuth
-  { murConsumerKey= consumerKey
+  { murConsumerKey = consumerKey
   , murConsumerSecret = consumerSecret
   , murGetPINAction = \url -> do
       putStrLn $ "Access '" ++ url ++ "' for Accept. And type PIN code here."
