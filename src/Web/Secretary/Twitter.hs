@@ -1,22 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 module Web.Secretary.Twitter where
+import Control.Applicative
 import Control.Lens
-import System.IO
+import Control.Monad.IO.Class
+import Control.Monad.Trans.Resource
 import Data.Conduit
-import qualified Data.Conduit.List as CL
 import Data.Conduit.Binary (sinkHandle)
 import Data.Default
+import Network.HTTP.Conduit as NC
+import System.IO
 import Web.Authenticate.OAuth
 import Web.Twitter.Conduit
 import Web.Twitter.Types.Lens
-import Network.HTTP.Conduit as NC
-import Control.Monad.Trans.Resource
-import Control.Monad.IO.Class
-import Control.Applicative
+import qualified Data.ByteString.Char8 as B8
+import qualified Data.Conduit.List as CL
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import qualified Data.ByteString.Char8 as B8
 
 data MurmurAuth = MurmurAuth
   { murConsumerKey :: String

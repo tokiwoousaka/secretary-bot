@@ -1,12 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Web.Secretary.Parser where
-import qualified Web.Twitter.Conduit (TWInfo)
 import Control.Applicative
 import Control.Monad.State
 import Data.Attoparsec.Text
-import Data.List.Extra (trim)
-import Data.Time
-import Data.Maybe
 import qualified Data.Text as T
 
 data CommandToken
