@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
-module Web.Secretary.ScheduleConstructor.Twitter where
+module Web.Secretary.Twitter where
 import Control.Applicative
 import Control.Lens
 import Control.Monad.IO.Class

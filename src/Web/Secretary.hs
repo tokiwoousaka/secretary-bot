@@ -3,6 +3,7 @@
 module Web.Secretary where
 import Web.Twitter.Conduit (TWInfo)
 import Web.Secretary.ScheduleConstructor
+import Web.Secretary.Twitter
 
 import Data.Time
 import Data.List
