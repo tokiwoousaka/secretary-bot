@@ -26,7 +26,7 @@ secretary = do
       saveTlInfo . twStatusId . head $ reverse xs
       return . filter ((/="its_out_of_tune") . twUserName) . filter ((v <) . twStatusId) $ xs
   putStrLn " --- target tweets"
-  sequenceMap_ printTweet $ targets
+  mapM_ printTweet $ targets
   putStrLn " --- run schedule"
   runSecretary $ map twText targets
 
@@ -89,7 +89,7 @@ runSecretary texts = do
     fs <- loadScheduleInfo
     let sc = concatMap (maybeListToList . parseCommand now) $ texts
     let schedule = initSchedule sc ++ fs
-    res <- sequenceMap (runCommand now twInfo) schedule 
+    res <- mapM (runCommand now twInfo) schedule 
     saveScheduleInfo $ filter isOldSchedule res
   where 
     initSchedule :: [Schedule] -> [(Schedule, Maybe LocalTime)]
@@ -179,12 +179,6 @@ consumerSecret = ""
 
 ----
 -- Util
-
-sequenceMap_ :: (Foldable f, Functor f, Monad m) => (a -> m b) -> f a -> m ()
-sequenceMap_ f = sequence_  . fmap f
-
-sequenceMap :: (Traversable f, Functor f, Monad m) => (a -> m b) -> f a -> m (f b)
-sequenceMap f = sequence  . fmap f
 
 maybeListToList :: Maybe [a] -> [a]
 maybeListToList (Just xs) = xs
