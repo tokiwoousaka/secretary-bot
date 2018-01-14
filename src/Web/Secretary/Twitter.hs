@@ -61,31 +61,6 @@ post twInfo req = do
   runResourceT $ call twInfo mgr req
   return ()
 
--- ShowTimeline
-showMentionsTimeline :: TWInfo -> Int -> IO ()
-showMentionsTimeline twInfo = showTimeline mentionsTimeline twInfo
-
-showHomeTimeline :: TWInfo -> Int -> IO ()
-showHomeTimeline twInfo = showTimeline homeTimeline twInfo
-
-showTimeline :: HasMaxIdParam (APIRequest a [Status]) => APIRequest a [Status] -> TWInfo -> Int -> IO ()
-showTimeline status twInfo ln = do
-  mgr <- newManager tlsManagerSettings
-  runResourceT $ do
-    let src = sourceWithMaxId twInfo mgr status
-    src $= CL.isolate ln $$ CL.mapM_ putTweetLn
-
-putTweetLn :: MonadIO m => Status -> m ()
-putTweetLn st = liftIO . T.putStrLn . T.concat $ 
-  [ T.pack . show $ st^.statusId
-  , "【"
-  , st^.statusUser.userName
-  , "("
-  , st^.statusUser.userScreenName
-  , ")】"
-  , st^.statusText
-  ]
-
 -- GetTimeLine
 
 data TweetInfo = TweetInfo 
