@@ -1,22 +1,10 @@
 module Web.Secretary.Schedule where
-import Web.Twitter.Conduit (TWInfo)
 import Web.Secretary.ScheduleConstructor
-import Web.Secretary.Twitter
-import Web.Secretary.Util
 import Web.Secretary.File 
-  ( loadTlInfo 
-  , loadScheduleInfo
+  ( loadScheduleInfo
   , saveScheduleInfo 
-  , saveTlInfo 
-  , readTWInfo
-  , writeTWInfo
   )
 import Data.Time
-import Data.List
-import Control.Monad.IO.Class
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import Data.Maybe
 
 maybeTargetSchedule :: (Schedule, Maybe LocalTime) -> LocalTime -> Maybe Schedule
 maybeTargetSchedule (_, Just _) _ = Nothing --TODO: 繰り返しスケジュール
