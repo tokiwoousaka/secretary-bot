@@ -17,7 +17,7 @@ data CommandToken
   | TokenHour Int
   | TokenMinites Int
   | TokenHourMinites Int Int
-  deriving (Show, Read)
+  deriving (Show, Read, Eq)
 
 yearParser :: Parser CommandToken
 yearParser = TokenYear <$> decimal <* "年"
@@ -43,16 +43,22 @@ minitesParser = TokenMinites <$> decimal <* "分"
 hourMinitesParser :: Parser CommandToken
 hourMinitesParser = TokenHourMinites <$> decimal <* ":" <*> decimal
 
-dateTimeParser :: Parser CommandToken
-dateTimeParser 
+dateParser :: Parser CommandToken
+dateParser 
+  =   hourMinitesParser
+  <|> hourParser
+  <|> minitesParser
+
+timeParser :: Parser CommandToken
+timeParser 
   =   yearMonthDayParser
   <|> monthDayParser
-  <|> hourMinitesParser
   <|> yearParser 
   <|> monthParser
   <|> dayParser
-  <|> hourParser
-  <|> minitesParser
+
+dateTimeParser :: Parser [CommandToken]
+dateTimeParser = fmap concat . sequence $ [many dateParser, many timeParser]
 
 sayParser :: Parser CommandToken
 sayParser = string "って言って" *> pure TokenSay
@@ -64,17 +70,10 @@ accountParser = TokenAccount <$> (char '@' *> many1 (chars "abcdefghijklmnopqrst
     chars [] = error "chars request some char"
     chars (c:cs) = foldl (<|>) (char c) $ map char cs
 
-tokenParser :: Parser CommandToken
-tokenParser 
-  =   accountParser
-  <|> dateTimeParser
-  <|> sayParser 
-  <|> TokenAnyChar <$> anyChar
-
 tokensParser :: Parser [CommandToken]
 tokensParser 
   =   pure [] <* endOfInput 
-  <|> (:) <$> tokenParser <*> tokensParser
+  <|> (fmap join . sequence $ [dateTimeParser, pure <$> sayParser])
 
 parseToken :: T.Text -> Maybe [CommandToken]
 parseToken text = 
